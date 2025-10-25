@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Backend Service - Spring Boot Application
+  backend:
+    image: openjdk:17-jdk-slim
+    container_name: shodhacode-backend
+    working_dir: /app
+    command: java -jar shodhacode-0.0.1-SNAPSHOT.jar
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    volumes:
+      - ./target:/app
+      - /var/run/docker.sock:/var/run/docker.sock  # Required for Docker-in-Docker
+      - /tmp:/tmp  # Shared temp directory for code execution
+    networks:
+      - shodhacode-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/contests"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend Service - Next.js Application
+  frontend:
+    image: node:18-alpine
+    container_name: shodhacode-frontend
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - shodhacode-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+networks:
+  shodhacode-network:
+    driver: bridge
+
+# Usage Instructions:
+# 1. Build the Python runner image first:
+#    cd docker && docker build -t shodhacode-python-runner . && cd ..
+#
+# 2. Build the Spring Boot JAR:
+#    ./mvnw clean package -DskipTests
+#
+# 3. Start all services:
+#    docker-compose up
+#
+# 4. Access:
+#    - Frontend: http://localhost:3000
+#    - Backend: http://localhost:8080
+#    - H2 Console: http://localhost:8080/h2-console

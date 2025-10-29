@@ -1,0 +1,27 @@
+services:
+  # Backend Service - Spring Boot
+  - type: web
+    name: shodhacode-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile.backend
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
+      - key: PORT
+        value: 8080
+    healthCheckPath: /api/contests
+    
+  # Frontend Service - Next.js
+  - type: web
+    name: shodhacode-frontend
+    runtime: node
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: shodhacode-backend
+          property: url
+      - key: PORT
+        value: 3000
